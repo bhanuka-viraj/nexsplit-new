@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
-
 // --- Types ---
 
 export interface User {
@@ -28,10 +26,10 @@ export interface SplitDetail {
 
 export interface Transaction {
   id: string;
-  type: 'EXPENSE' | 'INCOME' | 'SETTLEMENT'; // Added SETTLEMENT
+  type: 'EXPENSE' | 'INCOME' | 'SETTLEMENT';
   groupId?: string; // Optional for personal
   paidByUserId: string;
-  paidToUserId?: string; // For SETTLEMENT: who received the money like "Alice paid Bob"
+  paidToUserId?: string; // For SETTLEMENT: who received the money
   amount: number;
   description: string;
   date: string;
@@ -55,121 +53,6 @@ export interface Invitation {
     fromUserId: string;
     status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
 }
-
-// --- Mock Data ---
-
-const MOCK_USERS: User[] = [
-  { id: 'u1', name: 'You', avatarUrl: 'https://github.com/shadcn.png' },
-  { id: 'u2', name: 'Alice', avatarUrl: 'https://i.pravatar.cc/150?u=alice' },
-  { id: 'u3', name: 'Bob', avatarUrl: 'https://i.pravatar.cc/150?u=bob' },
-  { id: 'u4', name: 'Charlie', avatarUrl: 'https://i.pravatar.cc/150?u=charlie' },
-  { id: 'u5', name: 'David', avatarUrl: 'https://i.pravatar.cc/150?u=david' },
-  { id: 'u6', name: 'Eva', avatarUrl: 'https://i.pravatar.cc/150?u=eva' },
-  { id: 'u7', name: 'Frank', avatarUrl: 'https://i.pravatar.cc/150?u=frank' },
-  { id: 'u8', name: 'Grace', avatarUrl: 'https://i.pravatar.cc/150?u=grace' },
-];
-
-const MOCK_INVITATIONS: Invitation[] = [
-    { 
-        id: 'inv1', 
-        groupId: 'g2', 
-        groupName: 'Weekend Hike 🏔️', 
-        groupImageUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&q=80&w=1000',
-        toUserId: 'u1', 
-        fromUserId: 'u2', 
-        status: 'PENDING' 
-    }
-];
-
-const MOCK_GROUPS: Group[] = [
-  {
-    id: 'g1',
-    name: 'Bali Trip 🌴',
-    totalCost: 0, // Calculated dynamically
-    currency: 'USD',
-    members: [MOCK_USERS[0], MOCK_USERS[1], MOCK_USERS[2], MOCK_USERS[3]], // You, Alice, Bob, Charlie
-    createdAt: new Date().toISOString(),
-    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=1000' // Bali
-  },
-  {
-    id: 'g2',
-    name: 'Weekend Hike 🏔️',
-    totalCost: 0,
-    currency: 'USD',
-    members: [MOCK_USERS[1]], // Just Alice initially
-    createdAt: new Date().toISOString(),
-    imageUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&q=80&w=1000' // Mountains
-  }
-];
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: 't1',
-    type: 'EXPENSE',
-    groupId: 'g1',
-    paidByUserId: 'u1',
-    amount: 150,
-    description: 'Villa Deposit',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-    splitType: 'EQUAL',
-    splitDetails: [
-        { userId: 'u1' }, { userId: 'u2' }, { userId: 'u3' }, { userId: 'u4' }
-    ]
-  },
-  {
-    id: 't2',
-    type: 'EXPENSE',
-    groupId: 'g1',
-    paidByUserId: 'u2',
-    amount: 45,
-    description: 'Dinner at Jimbaran',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(), // 1 day ago
-    splitType: 'EQUAL',
-    splitDetails: [
-        { userId: 'u1' }, { userId: 'u2' }, { userId: 'u3' }, { userId: 'u4' }
-    ]
-  },
-  {
-    id: 't3',
-    type: 'EXPENSE',
-    groupId: 'g1',
-    paidByUserId: 'u3',
-    amount: 20,
-    description: 'Grab Taxi',
-    date: new Date().toISOString(),
-    splitType: 'EQUAL',
-    splitDetails: [
-        { userId: 'u1' }, { userId: 'u3' }
-    ]
-  },
-  {
-    id: 't4',
-    type: 'INCOME',
-    paidByUserId: 'u1',
-    amount: 5000,
-    description: 'Salary Deposit',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    splitType: 'EXACT',
-    splitDetails: []
-  },
-  {
-      id: 't5',
-      type: 'SETTLEMENT',
-      groupId: 'g1',
-      paidByUserId: 'u2', // Alice
-      paidToUserId: 'u1', // You
-      amount: 20,
-      description: 'Settlement',
-      date: new Date().toISOString(),
-      splitType: 'EXACT',
-      splitDetails: []
-  }
-];
-
-// --- Simulation Helpers ---
-
-// --- Simulation Helpers ---
-// const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)); // Unused
 
 // --- API Helper ---
 
@@ -384,9 +267,6 @@ export const api = {
   },
 
   verifyGoogleToken: async (token: string): Promise<{ user: User, accessToken: string }> => {
-      console.log('VerifyGoogleToken called with token:', token.substring(0, 10) + '...');
-      console.log('Sending request to:', `${API_URL}/auth/google`);
-      
       const response = await fetch(`${API_URL}/auth/google`, {
           method: 'POST',
           headers: {

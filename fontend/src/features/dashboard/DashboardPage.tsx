@@ -31,10 +31,54 @@ export function DashboardPage() {
     const startingBalance = 5000;
     const currentUserId = user?.id || 'u1';
 
-    const income = transactions?.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0) || 0;
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💰 BALANCE CALCULATION DEBUG');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Current User ID:', currentUserId);
+    console.log('Total Transactions:', transactions?.length || 0);
 
-    // Outflow: Expenses paid by me
-    const outflow = transactions?.filter(t => t.type === 'EXPENSE' && t.paidByUserId === currentUserId).reduce((acc, t) => acc + t.amount, 0) || 0;
+    const income = transactions?.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0) || 0;
+    console.log('\n💵 Income Transactions:', income);
+
+    // Outflow: ALL expenses (personal + group) paid by me
+    // Handle both populated objects and string IDs
+    const expenseTransactions = transactions?.filter(t => t.type === 'EXPENSE') || [];
+    console.log('\n📤 Total Expense Transactions:', expenseTransactions.length);
+
+    expenseTransactions.forEach((t, index) => {
+        // Populated objects have _id, not id
+        const payerId = typeof t.paidByUserId === 'object'
+            ? ((t.paidByUserId as any)._id || (t.paidByUserId as any).id)
+            : t.paidByUserId;
+
+        const isMyExpense = payerId === currentUserId;
+
+        console.log(`  [${index + 1}] ${t.description}:`);
+        console.log(`      Amount: $${t.amount}`);
+        console.log(`      paidByUserId type: ${typeof t.paidByUserId}`);
+        console.log(`      paidByUserId value:`, t.paidByUserId);
+        console.log(`      Extracted payerId: ${payerId}`);
+        console.log(`      Is My Expense? ${isMyExpense}`);
+        console.log(`      Has GroupId? ${!!t.groupId}`);
+    });
+
+    const outflow = transactions?.filter(t => {
+        if (t.type !== 'EXPENSE') return false;
+
+        // Populated objects have _id, not id (mapId doesn't transform nested objects)
+        const payerId = typeof t.paidByUserId === 'object'
+            ? ((t.paidByUserId as any)._id || (t.paidByUserId as any).id)
+            : t.paidByUserId;
+
+        return payerId === currentUserId;
+    }).reduce((acc, t) => acc + t.amount, 0) || 0;
+
+    console.log('\n📊 Summary:');
+    console.log(`  Starting Balance: $${startingBalance}`);
+    console.log(`  Total Income: +$${income}`);
+    console.log(`  Total Outflow (My Expenses): -$${outflow}`);
+    console.log(`  Final Balance: $${startingBalance + income - outflow}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     const currentBalance = startingBalance + income - outflow;
 

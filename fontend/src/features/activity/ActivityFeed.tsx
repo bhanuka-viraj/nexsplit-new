@@ -8,6 +8,12 @@ import { useUIStore } from '@/store/ui.store';
 
 export function ActivityFeed() {
     const { currency } = useUIStore();
+
+    const { data: currentUser } = useQuery({
+        queryKey: ['user'],
+        queryFn: api.getCurrentUser,
+    });
+
     const { data: transactions, isLoading } = useQuery({
         queryKey: ['all-transactions'],
         queryFn: api.getAllTransactions,
@@ -41,30 +47,41 @@ export function ActivityFeed() {
     return (
         <div className="space-y-3 pb-24">
             {transactions.map((t, i) => {
-                const isPayer = t.paidByUserId === 'u1'; // Hardcoded current user check for mock
+                // Populated objects have _id, not id (mapId doesn't transform nested objects)
+                const payerId = typeof t.paidByUserId === 'object'
+                    ? ((t.paidByUserId as any)._id || (t.paidByUserId as any).id)
+                    : t.paidByUserId;
+
+                const isPayer = payerId === currentUser?.id;
+                const isIncome = t.type === 'INCOME';
+                const isExpense = t.type === 'EXPENSE';
+
+                // For income: always show as positive (you received)
+                // For expense: show positive if you paid, negative if you owe
+                const isPositive = isIncome || (isExpense && isPayer);
 
                 return (
                     <Card key={t.id} className="border-none bg-accent/30 hover:bg-accent/50 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
                         <CardContent className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isPayer ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                    {isPayer ? <ArrowUpRight size={20} /> : <ArrowDownLeft size={20} />}
+                                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                    {isPositive ? <ArrowUpRight size={20} /> : <ArrowDownLeft size={20} />}
                                 </div>
                                 <div>
                                     <p className="font-semibold text-sm">{t.description}</p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <span>{isToday(new Date(t.date)) ? 'Today' : isYesterday(new Date(t.date)) ? 'Yesterday' : format(new Date(t.date), 'MMM d')}</span>
                                         <span>•</span>
-                                        <span className="capitalize">{t.splitType.toLowerCase()} split</span>
+                                        <span className="capitalize">{isIncome ? 'income' : t.splitType.toLowerCase() + ' split'}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className={`font-bold ${isPayer ? 'text-emerald-500' : 'text-foreground'}`}>
-                                    {isPayer ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
+                                <p className={`font-bold ${isPositive ? 'text-emerald-500' : 'text-foreground'}`}>
+                                    {isPositive ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate max-w-[100px]">
-                                    {isPayer ? 'You paid' : 'You owe'}
+                                    {isIncome ? 'Received' : (isPayer ? 'You paid' : 'You owe')}
                                 </p>
                             </div>
                         </CardContent>

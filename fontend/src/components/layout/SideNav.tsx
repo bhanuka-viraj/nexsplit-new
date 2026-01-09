@@ -3,9 +3,15 @@ import { Home, Users, CreditCard, Settings, Plus, Banknote, LogOut } from 'lucid
 import { NavLink } from 'react-router-dom';
 import { api } from '@/services/api';
 import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
 
 export function SideNav() {
     const { openAddTransaction, currency, setCurrency } = useUIStore();
+
+    const { data: user } = useQuery({
+        queryKey: ['user'],
+        queryFn: api.getCurrentUser,
+    });
 
     const navItems = [
         { icon: Home, label: 'Home', path: '/' },
@@ -69,10 +75,16 @@ export function SideNav() {
 
                 <div className="flex items-center gap-2 px-2 py-3 rounded-xl bg-accent/30 border border-border/50">
                     <div className="h-8 w-8 rounded-full bg-muted overflow-hidden shrink-0">
-                        <img src="https://github.com/shadcn.png" alt="User" />
+                        {user?.avatarUrl ? (
+                            <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+                        ) : (
+                            <div className="h-full w-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                                {user?.name?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                        )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">You</p>
+                        <p className="text-sm font-medium truncate">{user?.name || 'Loading...'}</p>
                         <p className="text-xs text-muted-foreground truncate">Free Plan</p>
                     </div>
                     <Button

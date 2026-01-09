@@ -61,6 +61,30 @@ export const getTransactions = catchAsync(async (req: Request, res: Response) =>
         .populate('paidByUserId', 'name avatarUrl')
         .populate('groupId', 'name'); // useful to see which group
 
+    // DEBUG: Log transaction structure
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 GET /api/transactions DEBUG');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Current User ID:', userId);
+    console.log('Total Transactions Found:', transactions.length);
+    
+    if (transactions.length > 0) {
+        console.log('\n📝 Sample Transaction (first one):');
+        const sample = transactions[0];
+        console.log({
+            id: sample._id,
+            type: sample.type,
+            amount: sample.amount,
+            description: sample.description,
+            paidByUserId: sample.paidByUserId,
+            paidByUserIdType: typeof sample.paidByUserId,
+            groupId: sample.groupId,
+            hasGroupId: !!sample.groupId
+        });
+    }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
     ApiResponse.success(res, transactions);
 });
 

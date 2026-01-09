@@ -27,15 +27,20 @@ const format = winston.format.combine(
   )
 );
 
-const transports = [
+const transports: winston.transport[] = [
   new winston.transports.Console(),
-  new winston.transports.File({
-    filename: 'logs/error.log',
-    level: 'error',
-    format: winston.format.json(),
-  }),
-  new winston.transports.File({ filename: 'logs/all.log', format: winston.format.json() }),
 ];
+
+if (env.NODE_ENV === 'development') {
+  transports.push(
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      format: winston.format.json(),
+    }),
+    new winston.transports.File({ filename: 'logs/all.log', format: winston.format.json() })
+  );
+}
 
 export const Logger = winston.createLogger({
   level: env.NODE_ENV === 'development' ? 'debug' : 'warn',
