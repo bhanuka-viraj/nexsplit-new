@@ -36,6 +36,7 @@ export function RecentActivity({ transactions, isLoading }: RecentActivityProps)
             <CardContent className="px-0 space-y-3">
                 {transactions.slice(0, 3).map((t, i) => { // only show 3
                     const isIncome = t.type === 'INCOME';
+
                     return (
                         <div key={t.id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40 hover:bg-accent/40 transition-colors animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 100}ms` }}>
                             <div className="flex items-center gap-3">

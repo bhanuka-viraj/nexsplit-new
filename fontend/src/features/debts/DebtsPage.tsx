@@ -1,198 +1,164 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { calculateDetailedDebts, calculateSimplifiedDebts } from '@/utils/settlements';
-import type { Debt } from '@/utils/settlements';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, TrendingDown, CheckCircle2, ArrowRight } from 'lucide-react'; // Using standard icons, assuming library availability
-import { useMemo } from 'react';
-import { toast } from 'sonner';
+import { Loader2, TrendingDown, CheckCircle2, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
 import { PageTransition } from '@/components/layout/PageTransition';
 
 export function DebtsPage() {
-    const queryClient = useQueryClient();
+    const [strategy, setStrategy] = useState<'simplified' | 'detailed'>('simplified');
 
-    // 1. Fetch ALL groups
-    const { data: groups, isLoading: groupsLoading } = useQuery({
-        queryKey: ['groups'],
-        queryFn: api.getGroups,
+    // Fetch settlements from backend
+    const { data: settlementsData, isLoading } = useQuery({
+        queryKey: ['settlements', strategy],
+        queryFn: () => api.getSettlements(strategy),
     });
 
-    // 2. We need details (transactions + members) for ALL groups to calculate debt.
-    // In a real backend, we'd hit /api/debts. Here we must fetch details for each group.
-    // This is inefficient client-side but necessary for mock.
-    const groupQueriesResult = useQuery({
-        queryKey: ['allGroupDetails', groups?.map(g => g.id)],
-        queryFn: async () => {
-            if (!groups) return [];
-            const promises = groups.map(g => api.getGroupDetails(g.id));
-            return Promise.all(promises);
-        },
-        enabled: !!groups && groups.length > 0,
-    });
-
-    const { data: allDetails, isLoading: detailsLoading } = groupQueriesResult;
-    const isLoading = groupsLoading || detailsLoading;
-
-    // 3. Fetch Current User
-    const { data: currentUser } = useQuery({
-        queryKey: ['user'],
-        queryFn: api.getCurrentUser,
-    });
-
-    // 4. Calculate Aggregate Debts
-    const aggDebts = useMemo(() => {
-        if (!allDetails || !currentUser) return { detailed: [], simplified: [] };
-
-        let allDetailed: (Debt & { groupName: string, groupId: string })[] = [];
-        let allSimplified: (Debt & { groupName: string, groupId: string })[] = [];
-
-        allDetails.forEach(details => {
-            if (!details) return;
-            const det = calculateDetailedDebts(details.transactions, details.group.members);
-            const sim = calculateSimplifiedDebts(details.transactions, details.group.members);
-
-            // Filter for MY debts
-            const myDet = det.filter(d => d.fromUserId === currentUser.id);
-            const mySim = sim.filter(d => d.fromUserId === currentUser.id);
-
-            // Add group context
-            allDetailed.push(...myDet.map(d => ({ ...d, groupName: details.group.name, groupId: details.group.id })));
-            allSimplified.push(...mySim.map(d => ({ ...d, groupName: details.group.name, groupId: details.group.id })));
-        });
-
-        return { detailed: allDetailed, simplified: allSimplified };
-    }, [allDetails, currentUser]);
-
-    // Mutation to pay
-    const mutation = useMutation({
-        mutationFn: (item: Debt & { groupId: string }) => {
-            return api.addTransaction({
-                type: 'SETTLEMENT',
-                groupId: item.groupId,
-                paidByUserId: item.fromUserId,
-                paidToUserId: item.toUserId,
-                amount: item.amount,
-                description: 'Settlement',
-                splitType: 'EXACT',
-                splitDetails: [],
-            });
-        },
-        onSuccess: () => {
-            // Invalidate specific groups or all
-            queryClient.invalidateQueries({ queryKey: ['allGroupDetails'] });
-            queryClient.invalidateQueries({ queryKey: ['groups'] });
-            // Also individual group queries if cached
-            // Actually 'allGroupDetails' is a custom key, we should invalidate 'group' keys too.
-            // Ideally we just invalidate everything relevant.
-            queryClient.invalidateQueries({ queryKey: ['group'] });
-            toast.success('Payment recorded');
-        }
-    });
+    const settlements = settlementsData?.settlements || [];
+    const totalOwing = settlements.reduce((sum: number, s: any) => sum + s.amount, 0);
 
     if (isLoading) {
-        return <div className="p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+        return (
+            <PageTransition className="px-6 pt-8 space-y-6 w-full max-w-4xl mx-auto">
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </PageTransition>
+        );
     }
 
-    const DebtsList = ({ items }: { items: typeof aggDebts.detailed }) => {
-        if (items.length === 0) {
-            return (
-                <div className="flex flex-col items-center justify-center h-64 text-center p-4 border rounded-xl border-dashed">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-4 opacity-50" />
-                    <h3 className="text-lg font-semibold">You're debt free!</h3>
-                    <p className="text-sm text-muted-foreground">You don't owe anyone anything right now.</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-4">
-                {items.map((item, i) => {
-                    // Find user info from the specific group details
-                    const groupDetail = allDetails?.find(g => g && g.group.id === item.groupId);
-                    const receiver = groupDetail?.group.members.find(m => m.id === item.toUserId);
-
-                    return (
-                        <Card key={`${item.groupId}-${i}`} className="overflow-hidden">
-                            <CardContent className="p-4 flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <Avatar className="h-10 w-10 border border-border">
-                                        <AvatarImage src={receiver?.avatarUrl} />
-                                        <AvatarFallback>{receiver?.name?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">Pay {receiver?.name}</p>
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                            <span className="truncate max-w-[100px]">{item.groupName}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col items-end gap-2">
-                                    <span className="font-bold text-base text-rose-500">-${item.amount.toFixed(2)}</span>
-                                    <Button
-                                        size="sm"
-                                        className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        onClick={() => mutation.mutate(item)}
-                                        disabled={mutation.isPending}
-                                    >
-                                        {mutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Settle'}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
-        );
-    };
-
-    const totalDebt = aggDebts.simplified.reduce((sum, d) => sum + d.amount, 0);
-
     return (
-        <PageTransition className="pb-24 pt-6 px-4 max-w-2xl mx-auto space-y-6">
-            <header className="mb-6">
-                <h1 className="text-3xl font-bold tracking-tight mb-1">Debts</h1>
-                <p className="text-muted-foreground">Overview of what you owe across all groups.</p>
-            </header>
+        <PageTransition className="px-6 pt-8 space-y-6 w-full max-w-4xl mx-auto pb-20">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Settle Up</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Optimize your debt settlements
+                    </p>
+                </div>
+            </div>
 
             {/* Summary Card */}
-            <Card className="bg-gradient-to-br from-rose-500/10 via-background to-background border-rose-200/20">
-                <CardContent className="p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                            <TrendingDown className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+            {settlements.length > 0 && (
+                <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Total You Owe</p>
+                                <p className="text-3xl font-bold text-primary mt-1">${totalOwing.toFixed(2)}</p>
+                            </div>
+                            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                <TrendingDown className="h-8 w-8 text-primary" />
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Owed</p>
-                            <h2 className="text-3xl font-bold text-rose-600 dark:text-rose-400">${totalDebt.toFixed(2)}</h2>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                        <p className="text-xs text-muted-foreground mt-4">
+                            {settlements.length} payment{settlements.length !== 1 ? 's' : ''} needed to settle all debts
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
 
-            <Tabs defaultValue="simplified">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="simplified">Simplified</TabsTrigger>
-                    <TabsTrigger value="detailed">Detailed</TabsTrigger>
+            {/* Strategy Tabs */}
+            <Tabs value={strategy} onValueChange={(v) => setStrategy(v as 'simplified' | 'detailed')}>
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="simplified">
+                        Simplified
+                        <span className="ml-2 text-xs bg-primary/10 px-2 py-0.5 rounded-full">
+                            {strategy === 'simplified' ? settlements.length : '...'}
+                        </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="detailed">
+                        Detailed by Group
+                        <span className="ml-2 text-xs bg-primary/10 px-2 py-0.5 rounded-full">
+                            {strategy === 'detailed' ? settlements.length : '...'}
+                        </span>
+                    </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="simplified" className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 text-xs text-muted-foreground">
-                        <ArrowRight className="h-4 w-4" />
-                        <span>Optimized to minimize the number of transactions you need to make.</span>
-                    </div>
-                    <DebtsList items={aggDebts.simplified} />
+                <TabsContent value="simplified" className="space-y-4 mt-6">
+                    {settlements.length === 0 ? (
+                        <Card>
+                            <CardContent className="p-12 text-center">
+                                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold">All Settled Up!</h3>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    You don't owe anyone money right now.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        settlements.map((settlement: any, idx: number) => (
+                            <Card key={idx} className="hover:bg-accent/50 transition-colors">
+                                <CardContent className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-4 flex-1">
+                                        <Avatar className="h-12 w-12 border-2 border-primary/20">
+                                            <AvatarImage src={settlement.to.avatarUrl} />
+                                            <AvatarFallback>{settlement.to.userName?.charAt(0) || 'U'}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-semibold">Pay {settlement.to.userName}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Settle outstanding debts
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <p className="text-2xl font-bold text-primary">
+                                                ${settlement.amount.toFixed(2)}
+                                            </p>
+                                        </div>
+                                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
                 </TabsContent>
 
-                <TabsContent value="detailed" className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 text-xs text-muted-foreground">
-                        <ArrowRight className="h-4 w-4" />
-                        <span>Shows every specific debt relationship from individual expenses.</span>
-                    </div>
-                    <DebtsList items={aggDebts.detailed} />
+                <TabsContent value="detailed" className="space-y-4 mt-6">
+                    {settlements.length === 0 ? (
+                        <Card>
+                            <CardContent className="p-12 text-center">
+                                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold">All Settled Up!</h3>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    You don't owe anyone money in any group.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        settlements.map((settlement: any, idx: number) => (
+                            <Card key={idx} className="hover:bg-accent/50 transition-colors">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            <Avatar className="h-12 w-12 border-2 border-primary/20">
+                                                <AvatarImage src={settlement.to.avatarUrl} />
+                                                <AvatarFallback>{settlement.to.userName?.charAt(0) || 'U'}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold">Pay {settlement.to.userName}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {settlement.groupName || 'Personal'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-primary">
+                                                    ${settlement.amount.toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
                 </TabsContent>
             </Tabs>
         </PageTransition>

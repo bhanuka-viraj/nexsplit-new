@@ -31,7 +31,30 @@ export const createTransaction = catchAsync(async (req: Request, res: Response) 
      throw new AppError(validation.error.issues[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const transaction = await TransactionService.createTransaction(userId, validation.data as any);
+  const data = validation.data;
+
+  // Validate settlement transactions
+  if (data.type === 'SETTLEMENT') {
+    if (!data.splitDetails || data.splitDetails.length !== 2) {
+      throw new AppError('Settlement must have exactly 2 split details (payer and receiver)', StatusCodes.BAD_REQUEST);
+    }
+
+    const amounts = data.splitDetails.map(s => s.amount);
+    const sum = amounts.reduce((a, b) => a + b, 0);
+    
+    if (Math.abs(sum) > 0.01) {
+      throw new AppError('Settlement split details must sum to zero', StatusCodes.BAD_REQUEST);
+    }
+
+    const hasNegative = amounts.some(a => a < 0);
+    const hasPositive = amounts.some(a => a > 0);
+    
+    if (!hasNegative || !hasPositive) {
+      throw new AppError('Settlement must have one negative (payer) and one positive (receiver) amount', StatusCodes.BAD_REQUEST);
+    }
+  }
+
+  const transaction = await TransactionService.createTransaction(userId, data as any);
   ApiResponse.created(res, transaction);
 });
 

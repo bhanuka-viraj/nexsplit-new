@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 
 export function SideNav() {
-    const { openAddTransaction, currency, setCurrency } = useUIStore();
+    const { openAddTransaction } = useUIStore();
 
     const { data: user } = useQuery({
         queryKey: ['user'],
@@ -49,22 +49,6 @@ export function SideNav() {
             </nav>
 
             <div className="pt-4 mt-auto space-y-4">
-                {/* Currency Selector */}
-                <div className="px-2">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 ml-1">CURRENCY</p>
-                    <select
-                        value={currency}
-                        onChange={(e) => setCurrency(e.target.value)}
-                        className="w-full bg-accent/30 border border-border/50 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer hover:bg-accent/50 transition-colors"
-                    >
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="IDR">IDR (Rp)</option>
-                        <option value="GBP">GBP (£)</option>
-                        <option value="JPY">JPY (¥)</option>
-                    </select>
-                </div>
-
                 <Button
                     onClick={openAddTransaction}
                     className="w-full h-10 rounded-lg text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"

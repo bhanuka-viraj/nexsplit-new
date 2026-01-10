@@ -72,14 +72,25 @@ export function SettleDebtDrawer({ groupId, members, open, onOpenChange, trigger
                 paidByUserId: debt.fromUserId,
                 paidToUserId: debt.toUserId,
                 amount: debt.amount,
-                description: 'Settlement',
+                description: 'Debt settlement',
                 splitType: 'EXACT',
-                splitDetails: [],
+                splitDetails: [
+                    {
+                        userId: debt.fromUserId,  // Payer
+                        amount: -debt.amount       // Negative = paying out (reduces debt)
+                    },
+                    {
+                        userId: debt.toUserId,    // Receiver
+                        amount: debt.amount        // Positive = receiving (reduces receivable)
+                    }
+                ],
             });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['group', groupId] });
             queryClient.invalidateQueries({ queryKey: ['groups'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+            queryClient.invalidateQueries({ queryKey: ['settlements'] });
             toast.success('Payment recorded');
         }
     });

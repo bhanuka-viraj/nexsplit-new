@@ -96,6 +96,34 @@ router.get('/me/stats', UserController.getUserStats);
 
 /**
  * @swagger
+ * /api/users/me/preferences:
+ *   put:
+ *     summary: Update user preferences (currency, monthlyLimit)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currency:
+ *                 type: string
+ *                 enum: [USD, EUR, GBP, JPY, IDR]
+ *               monthlyLimit:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 1000000
+ *     responses:
+ *       200:
+ *         description: Preferences updated
+ */
+router.put('/me/preferences', UserController.updatePreferences);
+
+/**
+ * @swagger
  * /api/users/search:
  *   get:
  *     summary: Search users by name or email

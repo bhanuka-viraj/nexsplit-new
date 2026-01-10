@@ -176,7 +176,11 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                                 <button
                                     type="button"
                                     key={member.id}
-                                    onClick={() => setValue('paidByUserId', member.id)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setValue('paidByUserId', member.id);
+                                    }}
                                     className={`flex items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${watch('paidByUserId') === member.id ? 'bg-accent text-white border-accent' : 'bg-transparent border-border text-muted-foreground hover:border-foreground/50'}`}
                                 >
                                     <div className="h-5 w-5 rounded-full bg-muted overflow-hidden">
@@ -200,7 +204,10 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                                 {selectedGroup.members.map(member => {
                                     const isSelected = splitDetails.some(d => d.userId === member.id);
                                     // Helper to toggle member inclusion
-                                    const toggleMember = () => {
+                                    const toggleMember = (e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+
                                         if (isSelected) {
                                             // Prevent removing if only 1 left (optional constraint)
                                             if (splitDetails.length <= 1) return;
@@ -285,8 +292,9 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                             })}
                         </div>
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
 
             <div className="grid grid-cols-2 gap-4 pt-4 px-4 pb-4">
                 <Button variant="outline" type="button" onClick={onCancel} className="w-full h-12 rounded-xl">
@@ -297,6 +305,6 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                     {transactionType === 'INCOME' ? 'Add Income' : 'Add Expense'}
                 </Button>
             </div>
-        </form>
+        </form >
     );
 }

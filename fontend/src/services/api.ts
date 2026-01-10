@@ -223,6 +223,34 @@ export const api = {
       });
   },
 
+  // NEW: Backend calculation endpoints
+  getDashboardSummary: async () => {
+      return fetchWithAuth('/dashboard/summary');
+  },
+
+  getGroupSummary: async (groupId: string) => {
+      return fetchWithAuth(`/groups/${groupId}/summary`);
+  },
+
+  getDebts: async () => {
+      return fetchWithAuth('/debts');
+  },
+
+  getSettlements: async (strategy: 'simplified' | 'detailed' = 'simplified', groupId?: string) => {
+      const params = new URLSearchParams({ strategy });
+      if (groupId) params.append('groupId', groupId);
+      return fetchWithAuth(`/debts/settlements?${params.toString()}`);
+  },
+
+  // Update user preferences
+  updatePreferences: async (preferences: { currency?: string; monthlyLimit?: number }) => {
+      return fetchWithAuth('/users/me/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preferences)
+      });
+  },
+
   // --- Auth API ---
 
   login: async (email: string, password: string): Promise<User> => {

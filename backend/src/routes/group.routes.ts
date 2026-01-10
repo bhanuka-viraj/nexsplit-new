@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as GroupController from '../controllers/group.controller';
+import * as GroupSummaryController from '../controllers/groupSummary.controller';
 import { isAuthenticated } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -130,9 +131,9 @@ router.delete('/:id/members/:userId', GroupController.removeMember);
 
 /**
  * @swagger
- * /api/groups/{id}/debts:
+ * /api/groups/:id/summary:
  *   get:
- *     summary: Get simplified group debts
+ *     summary: Get calculated group summary with debt breakdown
  *     tags: [Groups]
  *     security:
  *       - bearerAuth: []
@@ -141,8 +142,8 @@ router.delete('/:id/members/:userId', GroupController.removeMember);
  *         name: id
  *     responses:
  *       200:
- *         description: Debt graph
+ *         description: Group summary with calculated debts
  */
-router.get('/:id/debts', GroupController.getGroupDebts);
+router.get('/:id/summary', GroupSummaryController.getGroupSummary);
 
 export default router;

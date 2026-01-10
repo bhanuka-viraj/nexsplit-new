@@ -13,6 +13,7 @@ import transactionRoutes from './routes/transaction.routes';
 import invitationRoutes from './routes/invitation.routes';
 import notificationRoutes from './routes/notification.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import debtRoutes from './routes/debt.routes';
 import { configurePassport } from './config/passport';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -63,6 +64,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/debts', debtRoutes);
 
 // Error Handling
 app.use(errorHandler);

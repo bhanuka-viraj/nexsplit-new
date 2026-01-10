@@ -54,11 +54,18 @@ export function ActivityFeed() {
 
                 const isPayer = payerId === currentUser?.id;
                 const isIncome = t.type === 'INCOME';
-                const isExpense = t.type === 'EXPENSE';
+                // const isExpense = t.type === 'EXPENSE'; // This variable is no longer needed
 
                 // For income: always show as positive (you received)
                 // For expense: show positive if you paid, negative if you owe
-                const isPositive = isIncome || (isExpense && isPayer);
+                // const isPositive = isIncome || (isExpense && isPayer); // Old logic
+
+                // FIXED LOGIC:
+                // - Income: always positive (you received money)
+                // - Expense you paid: NEGATIVE (money went out)
+                // - Expense others paid: could show as negative (you owe them)
+                // For simplicity: only income is positive
+                const isPositive = isIncome;
 
                 return (
                     <Card key={t.id} className="border-none bg-accent/30 hover:bg-accent/50 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>

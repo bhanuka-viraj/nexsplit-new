@@ -90,8 +90,3 @@ export const removeMember = catchAsync(async (req: Request, res: Response) => {
     ApiResponse.success(res, null, 'Member removed');
 });
 
-export const getGroupDebts = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const debts = await GroupService.getGroupDebts(id);
-    ApiResponse.success(res, debts);
-});

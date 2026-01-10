@@ -62,3 +62,38 @@ export const getUserStats = catchAsync(async (req: Request, res: Response) => {
     // For MVP, just return mock or basic aggregation
     ApiResponse.success(res, { totalSpent: 0, totalSaved: 0 });
 });
+
+export const updatePreferences = catchAsync(async (req: Request, res: Response) => {
+    const userId = (req.user as any)._id;
+    const { currency, monthlyLimit } = req.body;
+
+    // Validate inputs
+    const validCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'IDR'];
+    if (currency && !validCurrencies.includes(currency)) {
+        throw new AppError('Invalid currency', StatusCodes.BAD_REQUEST);
+    }
+
+    if (monthlyLimit !== undefined && (monthlyLimit < 0 || monthlyLimit > 1000000)) {
+        throw new AppError('Monthly limit must be between 0 and 1,000,000', StatusCodes.BAD_REQUEST);
+    }
+
+    // Update user preferences
+    const updateData: any = {};
+    if (currency) updateData.currency = currency;
+    if (monthlyLimit !== undefined) updateData.monthlyLimit = monthlyLimit;
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        updateData,
+        { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+        throw new AppError('User not found', StatusCodes.NOT_FOUND);
+    }
+
+    ApiResponse.success(res, {
+        currency: updatedUser.currency,
+        monthlyLimit: updatedUser.monthlyLimit
+    });
+});
