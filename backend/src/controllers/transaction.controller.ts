@@ -26,8 +26,12 @@ const createTransactionSchema = z.object({
 
 export const createTransaction = catchAsync(async (req: Request, res: Response) => {
   const userId = (req.user as any)._id.toString();
+  
+  console.log('📥 Transaction request body:', JSON.stringify(req.body, null, 2));
+  
   const validation = createTransactionSchema.safeParse(req.body);
   if (!validation.success) {
+     console.log('❌ Validation failed:', JSON.stringify(validation.error.issues, null, 2));
      throw new AppError(validation.error.issues[0].message, StatusCodes.BAD_REQUEST);
   }
 

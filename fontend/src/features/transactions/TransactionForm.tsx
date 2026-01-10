@@ -51,22 +51,40 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
     const amountStr = watch('amount');
     const amount = parseFloat(amountStr) || 0;
+    const paidByUserId = watch('paidByUserId'); // Move watch() call here, outside map
 
     // Initialize/Reset split details when group changes
     useEffect(() => {
-        if (selectedGroup) {
-            setSplitDetails(
-                selectedGroup.members.map(m => ({
+        if (selectedGroup && selectedGroup.members) {
+            // Use functional update to atomically replace splitDetails
+            setSplitDetails(() => {
+                const newSplitDetails = selectedGroup.members.map(m => ({
                     userId: m.id,
                     amount: 0,
                     percentage: 0
-                }))
-            );
+                }));
+                console.log('✅ Split details initialized for group:', selectedGroupId, newSplitDetails);
+                return newSplitDetails;
+            });
+
+            // Reset paidByUserId if current payer is not in the new group
+            const currentPayerStillValid = selectedGroup.members.some(m => m.id === paidByUserId);
+
+            if (!currentPayerStillValid) {
+                const isCurrentUserInGroup = selectedGroup.members.some(m => m.id === currentUser.id);
+                if (isCurrentUserInGroup) {
+                    setValue('paidByUserId', currentUser.id, { shouldValidate: false });
+                } else if (selectedGroup.members.length > 0) {
+                    setValue('paidByUserId', selectedGroup.members[0].id, { shouldValidate: false });
+                }
+            }
         } else {
-            // Personal or no group
-            setSplitDetails([]);
+            // No group selected - clear split details
+            setSplitDetails(() => []);
         }
-    }, [selectedGroupId, selectedGroup]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps  
+    }, [selectedGroupId]); // Only depend on groupId to avoid infinite loops
+
 
     const handleSplitChange = (userId: string, field: 'amount' | 'percentage', value: number) => {
         setSplitDetails(prev => prev.map(d => {
@@ -80,16 +98,28 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
     const handleFormSubmit = (data: z.infer<typeof transactionSchema>) => {
         const finalGroupId = isPersonal ? undefined : data.groupId;
 
-        // If personal expense or income, split details are empty/irrelevant (or 100% to self)
-        const finalDetails = isPersonal ? [] : splitDetails;
+        // Filter out any split details with undefined userId (stale state bug)
+        const validSplitDetails = splitDetails.filter(d => d.userId !== undefined && d.userId !== null && d.userId !== '');
+        const finalDetails = isPersonal ? [] : validSplitDetails;
 
-        onSubmit({
+        console.log('📊 Current splitDetails state:', splitDetails);
+        console.log('📊 After filtering valid entries:', validSplitDetails);
+        console.log('📊 Final split details being sent:', finalDetails);
+        console.log('📊 splitDetails length:', finalDetails.length);
+        finalDetails.forEach((d, i) => {
+            console.log(`  [${i}]:`, d);
+        });
+
+        const payload = {
             ...data,
             groupId: finalGroupId,
             type: transactionType,
             splitType: isPersonal ? 'EXACT' : splitType,
             splitDetails: finalDetails
-        });
+        };
+
+        console.log('🚀 Submitting transaction:', payload);
+        onSubmit(payload);
     };
 
     return (
@@ -171,58 +201,70 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                 {!isPersonal && selectedGroup && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Paid by</label>
+                        <p className="text-xs text-yellow-500">DEBUG: Current paidByUserId = {paidByUserId}</p>
                         <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar">
-                            {selectedGroup.members.map(member => (
-                                <button
-                                    type="button"
-                                    key={member.id}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setValue('paidByUserId', member.id);
-                                    }}
-                                    className={`flex items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${watch('paidByUserId') === member.id ? 'bg-accent text-white border-accent' : 'bg-transparent border-border text-muted-foreground hover:border-foreground/50'}`}
-                                >
-                                    <div className="h-5 w-5 rounded-full bg-muted overflow-hidden">
-                                        <img src={member.avatarUrl} alt={member.name} />
-                                    </div>
-                                    {member.id === currentUser.id ? 'You' : member.name}
-                                </button>
-                            ))}
+                            {selectedGroup.members.map(member => {
+                                const isThisPayer = paidByUserId === member.id;
+
+                                console.log('🎯 Payer button render:', {
+                                    memberName: member.name,
+                                    memberId: member.id,
+                                    memberIdType: typeof member.id,
+                                    paidByUserId: paidByUserId,
+                                    paidByUserIdType: typeof paidByUserId,
+                                    isThisPayer: isThisPayer,
+                                    directComparison: paidByUserId === member.id,
+                                    stringComparison: String(paidByUserId) === String(member.id)
+                                });
+
+                                return (
+                                    <button
+                                        type="button"
+                                        key={member.id}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            console.log('🖱️ CLICKED payer:', member.name, member.id);
+                                            console.log('📝 Before setValue - paidByUserId:', paidByUserId);
+                                            setValue('paidByUserId', member.id, { shouldValidate: false });
+                                            console.log('✅ After setValue - should be:', member.id);
+
+                                            // Force check
+                                            setTimeout(() => {
+                                                const newValue = watch('paidByUserId');
+                                                console.log('⏰ After timeout - paidByUserId is now:', newValue);
+                                            }, 100);
+                                        }}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${isThisPayer ? 'bg-accent text-white border-accent' : 'bg-transparent border-border text-muted-foreground hover:border-foreground/50'}`}
+                                    >
+                                        <div className="h-5 w-5 rounded-full bg-muted overflow-hidden">
+                                            <img src={member.avatarUrl} alt={member.name} />
+                                        </div>
+                                        {member.id === currentUser.id ? 'You' : member.name}
+                                        {isThisPayer && <span className="ml-1 text-xs">✓</span>}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
                 {/* Split Logic UI (Only for Group Expenses) */}
-                {/* Split Logic UI (Only for Group Expenses) */}
                 {!isPersonal && selectedGroup && (
                     <div className="space-y-3 pt-2">
-                        {/* Member Selection (New) */}
+                        {/* Member Selection - All members included by default */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">Split with</label>
                             <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar">
                                 {selectedGroup.members.map(member => {
                                     const isSelected = splitDetails.some(d => d.userId === member.id);
-                                    // Helper to toggle member inclusion
-                                    const toggleMember = (e: React.MouseEvent) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-
-                                        if (isSelected) {
-                                            // Prevent removing if only 1 left (optional constraint)
-                                            if (splitDetails.length <= 1) return;
-                                            setSplitDetails(prev => prev.filter(d => d.userId !== member.id));
-                                        } else {
-                                            setSplitDetails(prev => [...prev, { userId: member.id, amount: 0, percentage: 0 }]);
-                                        }
-                                    };
 
                                     return (
                                         <button
                                             key={member.id}
                                             type="button"
-                                            onClick={toggleMember}
                                             className={`relative flex flex-col items-center gap-1 transition-all ${isSelected ? 'opacity-100 scale-100' : 'opacity-50 grayscale scale-90'}`}
+                                            disabled
                                         >
                                             <div className={`relative rounded-full p-0.5 ${isSelected ? 'bg-primary' : 'bg-transparent'}`}>
                                                 <img src={member.avatarUrl} alt={member.name} className="h-10 w-10 rounded-full border-2 border-background" />

@@ -58,12 +58,27 @@ export interface Invitation {
 
 const mapId = (item: any): any => {
     if (!item) return item;
+    
+    // Handle arrays - recursively map each element
     if (Array.isArray(item)) {
         return item.map(mapId);
     }
-    if (item._id && !item.id) {
-        return { ...item, id: item._id };
+    
+    // Handle objects
+    if (typeof item === 'object') {
+        // First, map _id to id if needed
+        const mapped = item._id && !item.id ? { ...item, id: item._id } : { ...item };
+        
+        // Then recursively map all nested objects/arrays
+        for (const key in mapped) {
+            if (mapped.hasOwnProperty(key) && key !== '_id') {
+                mapped[key] = mapId(mapped[key]);
+            }
+        }
+        
+        return mapped;
     }
+    
     return item;
 };
 

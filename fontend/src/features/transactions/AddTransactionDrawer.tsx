@@ -29,11 +29,16 @@ export function AddTransactionDrawer() {
 
     const handleSubmit = async (data: any) => {
         setIsSubmitting(true);
-        // data contains splitType and splitDetails now
-        mutation.mutate({
+
+        const payload = {
             ...data,
             amount: parseFloat(data.amount),
-        });
+        };
+
+        console.log('💰 AddTransactionDrawer - payload being sent:', payload);
+        console.log('💰 Amount type:', typeof payload.amount, 'Value:', payload.amount);
+
+        mutation.mutate(payload);
     };
 
     return (
