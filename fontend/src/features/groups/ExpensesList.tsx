@@ -11,7 +11,11 @@ interface ExpensesListProps {
 
 export function ExpensesList({ transactions, members, currentUserId }: ExpensesListProps) {
 
-    const getMember = (id: string) => members.find(m => m.id === id);
+    const getMember = (id: string | any) => {
+        // Handle both string ID and populated object
+        const searchId = typeof id === 'string' ? id : id?.id || id?._id;
+        return members.find(m => m.id === searchId);
+    };
 
     return (
         <div className="space-y-4">

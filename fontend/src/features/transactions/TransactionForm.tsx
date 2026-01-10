@@ -63,7 +63,6 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                     amount: 0,
                     percentage: 0
                 }));
-                console.log('✅ Split details initialized for group:', selectedGroupId, newSplitDetails);
                 return newSplitDetails;
             });
 
@@ -102,14 +101,6 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
         const validSplitDetails = splitDetails.filter(d => d.userId !== undefined && d.userId !== null && d.userId !== '');
         const finalDetails = isPersonal ? [] : validSplitDetails;
 
-        console.log('📊 Current splitDetails state:', splitDetails);
-        console.log('📊 After filtering valid entries:', validSplitDetails);
-        console.log('📊 Final split details being sent:', finalDetails);
-        console.log('📊 splitDetails length:', finalDetails.length);
-        finalDetails.forEach((d, i) => {
-            console.log(`  [${i}]:`, d);
-        });
-
         const payload = {
             ...data,
             groupId: finalGroupId,
@@ -118,7 +109,6 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
             splitDetails: finalDetails
         };
 
-        console.log('🚀 Submitting transaction:', payload);
         onSubmit(payload);
     };
 
@@ -201,21 +191,9 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                 {!isPersonal && selectedGroup && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Paid by</label>
-                        <p className="text-xs text-yellow-500">DEBUG: Current paidByUserId = {paidByUserId}</p>
                         <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar">
                             {selectedGroup.members.map(member => {
                                 const isThisPayer = paidByUserId === member.id;
-
-                                console.log('🎯 Payer button render:', {
-                                    memberName: member.name,
-                                    memberId: member.id,
-                                    memberIdType: typeof member.id,
-                                    paidByUserId: paidByUserId,
-                                    paidByUserIdType: typeof paidByUserId,
-                                    isThisPayer: isThisPayer,
-                                    directComparison: paidByUserId === member.id,
-                                    stringComparison: String(paidByUserId) === String(member.id)
-                                });
 
                                 return (
                                     <button
@@ -224,16 +202,7 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            console.log('🖱️ CLICKED payer:', member.name, member.id);
-                                            console.log('📝 Before setValue - paidByUserId:', paidByUserId);
                                             setValue('paidByUserId', member.id, { shouldValidate: false });
-                                            console.log('✅ After setValue - should be:', member.id);
-
-                                            // Force check
-                                            setTimeout(() => {
-                                                const newValue = watch('paidByUserId');
-                                                console.log('⏰ After timeout - paidByUserId is now:', newValue);
-                                            }, 100);
                                         }}
                                         className={`flex items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${isThisPayer ? 'bg-accent text-white border-accent' : 'bg-transparent border-border text-muted-foreground hover:border-foreground/50'}`}
                                     >
@@ -241,7 +210,6 @@ export function TransactionForm({ groups, currentUser, onSubmit, isLoading, onCa
                                             <img src={member.avatarUrl} alt={member.name} />
                                         </div>
                                         {member.id === currentUser.id ? 'You' : member.name}
-                                        {isThisPayer && <span className="ml-1 text-xs">✓</span>}
                                     </button>
                                 );
                             })}

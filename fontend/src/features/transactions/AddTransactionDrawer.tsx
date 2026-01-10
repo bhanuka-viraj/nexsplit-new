@@ -35,9 +35,6 @@ export function AddTransactionDrawer() {
             amount: parseFloat(data.amount),
         };
 
-        console.log('💰 AddTransactionDrawer - payload being sent:', payload);
-        console.log('💰 Amount type:', typeof payload.amount, 'Value:', payload.amount);
-
         mutation.mutate(payload);
     };
 
